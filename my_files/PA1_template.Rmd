@@ -1,0 +1,108 @@
+---
+title: "Reproducible Research: Peer Assessment 1"
+output: 
+  html_document:
+    keep_md: true
+---
+
+
+## Loading and preprocessing the data
+
+```{r}
+activity <- read.csv("activity.csv", stringsAsFactors = FALSE)
+activity$date <- as.Date(activity$date)
+```
+
+## What is mean total number of steps taken per day?
+```{r}
+library(dplyr)
+
+steps_per_day <- activity %>%
+group_by(date) %>%
+summarize(total_steps = sum(steps, na.rm = TRUE))
+
+hist(steps_per_day$total_steps,
+main = "Total Steps Per Day",
+xlab = "Steps",
+breaks = 20)
+
+mean_steps <- mean(steps_per_day$total_steps)
+median_steps <- median(steps_per_day$total_steps)
+
+mean_steps
+median_steps
+```
+
+
+## What is the average daily activity pattern?
+```{r}
+avg_interval <- activity %>%
+group_by(interval) %>%
+summarize(avg_steps = mean(steps, na.rm = TRUE))
+
+plot(avg_interval$interval, avg_interval$avg_steps, type = "l",
+main = "Average Steps per 5-Min Interval",
+xlab = "Interval",
+ylab = "Average Steps")
+
+avg_interval[which.max(avg_interval$avg_steps), ]
+```
+
+
+## Inputing missing values
+```{r}
+
+sum(is.na(activity$steps))
+
+
+interval_means <- avg_interval$avg_steps
+names(interval_means) <- avg_interval$interval
+
+activity_imputed <- activity
+activity_imputed$steps <- ifelse(
+is.na(activity_imputed$steps),
+interval_means[as.character(activity_imputed$interval)],
+activity_imputed$steps
+)
+
+steps_per_day_imputed <- activity_imputed %>%
+group_by(date) %>%
+summarize(total_steps = sum(steps))
+
+hist(steps_per_day_imputed$total_steps,
+main = "Total Steps Per Day (Imputed)",
+xlab = "Steps",
+breaks = 20)
+
+mean_steps_imputed <- mean(steps_per_day_imputed$total_steps)
+median_steps_imputed <- median(steps_per_day_imputed$total_steps)
+
+mean_steps_imputed
+median_steps_imputed
+
+```
+
+
+## Are there differences in activity patterns between weekdays and weekends?
+```{r}
+activity_imputed$day_type <- ifelse(
+weekdays(activity_imputed$date) %in% c("Saturday", "Sunday"),
+"weekend",
+"weekday"
+)
+
+activity_imputed$day_type <- factor(activity_imputed$day_type)
+
+avg_by_day <- activity_imputed %>%
+group_by(interval, day_type) %>%
+summarize(avg_steps = mean(steps))
+
+library(ggplot2)
+ggplot(avg_by_day, aes(interval, avg_steps)) +
+geom_line() +
+facet_wrap(~ day_type, nrow = 2) +
+labs(title = "Average Steps per Interval: Weekday vs Weekend",
+x = "Interval",
+y = "Average Steps")
+
+```
